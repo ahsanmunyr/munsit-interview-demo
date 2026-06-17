@@ -205,7 +205,7 @@
 
     <p>"Outside of OSN I build things on my own. Right now I'm working on a personal project called myosntv — a package subscription app in React Native, basically a custom OTT client with subscription management built from scratch. Before that I shipped Peredion, a sports prediction platform built with Expo; LosPollos, a full food delivery app — 45 screens, full architecture, API integration, solo; and Orb-Ed X, a school platform for kids and parents covering live classes, attendance, grades, and push notifications. I like owning complete products, not just writing tickets."</p>
 
-    <p>"At work the experience that maps most directly to Munsit: real-time features with WebSockets, subscription billing flows, Fastlane CI/CD, Datadog and Firebase monitoring at scale, and native module integration when React Native couldn't do it alone. At Artistic Denim before OSN I built real-time video with AWS Chime and Vision Camera — same networking model as live transcription streaming."</p>
+    <p>"At work the experience that maps most directly to Munsit: subscription billing flows, Firebase Crashlytics for crash monitoring, Firebase push notifications, Conviva for video analytics, Fastlane CI/CD, and native module integration. At Artistic Denim before OSN I built a video feature similar to Banuba — AR-style effects, merging video and audio tracks using FFmpeg, capturing with the React Native Camera SDK. That's real media pipeline work."</p>
 
     <p>"On the AI tooling side — I use Claude Code and Cursor as my primary development interface, every day. When I hit API limits I switch to Qwen2.5 Coder running locally on my M4 Pro — so I actually have a co-worker that never stops. I think about how to structure code so agents can navigate it: CLAUDE.md files, strong TypeScript types, modular files, MCP server integrations. That's genuinely how I work, not something I do occasionally."</p>
 
@@ -217,7 +217,7 @@
   <div class="qa-block">
     <div class="qa-q">Tell me more about your current role at OSN</div>
     <div class="qa-a">
-      <p>"OSN is a subscription OTT platform — think Netflix for the Arab world. The mobile app runs on iOS and Android, React Native with SwiftUI for native components where needed. I've worked on the subscription and payment flows, integrated Conviva for video analytics and Datadog for crash monitoring, and automated the release pipeline with Fastlane so we're not manually touching Xcode archives every release. The scale forces you to care about performance — I've profiled memory, reduced cold-start time, and worked on crash stability across a large active user base."</p>
+      <p>"OSN is a subscription OTT platform — think Netflix for the Arab world. The mobile app is React Native on iOS and Android. My work there: subscription and payment flows, Firebase Crashlytics for crash monitoring — I actually read and triaged those dashboards, not just added the SDK — Firebase push notifications, and Conviva for video analytics. I also did some SwiftUI work but I'll be straight: that was UI-level, building components that got bridged into the RN app, not owning a full SwiftUI module. The scale is real — millions of active users, so crash stability and release quality actually matter."</p>
     </div>
   </div>
 
@@ -344,8 +344,8 @@
     </tr>
     <tr>
       <td>SwiftUI</td>
-      <td class="depth-surface">Surface</td>
-      <td>"I've written basic SwiftUI views and bridged them to React Native as native components. Not a full SwiftUI app developer."</td>
+      <td class="depth-surface">UI only</td>
+      <td>"I built UI components in SwiftUI at OSN that were bridged into the React Native app — junior-level involvement, not owning a full SwiftUI feature. I can read and write SwiftUI views confidently, but I haven't architected a standalone SwiftUI app."</td>
     </tr>
     <tr>
       <td>Kotlin</td>
@@ -353,9 +353,29 @@
       <td>CV says basic — be consistent. "I've written Android native modules in Java/Kotlin, not full Android apps."</td>
     </tr>
     <tr>
-      <td>Datadog / Conviva</td>
+      <td>Firebase Crashlytics</td>
+      <td class="depth-mid">Real use</td>
+      <td>"Added the SDK, monitored dashboards, triaged crashes by stack trace, and fixed issues from it. Not just integration — actual day-to-day use."</td>
+    </tr>
+    <tr>
+      <td>Firebase Push Notifications (FCM)</td>
+      <td class="depth-mid">Real use</td>
+      <td>"Set up FCM at OSN and in earlier projects (OIP, Linkitsoft). Handled token registration, notification payloads, foreground/background handling."</td>
+    </tr>
+    <tr>
+      <td>Conviva</td>
       <td class="depth-mid">Integration</td>
-      <td>"I integrated the SDKs and read the dashboards. The deep alerting setup was done by the platform team — I consumed the tooling."</td>
+      <td>"Integrated the Conviva SDK for video analytics at OSN — session tracking, quality-of-experience metrics. Read the dashboards. Deep alerting config was the platform team's remit."</td>
+    </tr>
+    <tr>
+      <td>Datadog</td>
+      <td class="depth-surface">Dashboard reader</td>
+      <td>"Used Datadog dashboards to monitor crash rates and performance. SDK was integrated by the infra team — I consumed the observability, I didn't set it up."</td>
+    </tr>
+    <tr>
+      <td>FFmpeg / Video pipeline (Artistic Denim)</td>
+      <td class="depth-mid">Feature owner</td>
+      <td>"Built a Banuba-style video feature: captured with React Native Camera SDK, merged video and audio tracks via FFmpeg, handled the output file. I owned this feature end to end — it's not just an SDK drop-in."</td>
     </tr>
     <tr>
       <td>Fastlane</td>
