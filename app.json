@@ -20,11 +20,10 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
       [
         "expo-splash-screen",
         {
@@ -37,8 +36,13 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "dff89233-ae1f-42d8-b397-50d595547e99"
+      }
+    },
+    "owner": "ahsanmuneer"
   }
 }
