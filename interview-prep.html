@@ -187,6 +187,11 @@
     <li><a href="#performance">Performance (FlashList, Reanimated, Jank)</a></li>
     <li><a href="#eas">Expo EAS & OTA</a></li>
     <li><a href="#ai">AI Tooling — Your Biggest Edge</a></li>
+    <li><a href="#jscore">JS Core — var/let/const, Closures, Hoisting, Event Loop</a></li>
+    <li><a href="#async">Async JS — Promises, fetch vs axios, setTimeout</a></li>
+    <li><a href="#react-patterns">React Patterns — HOC, State/Props, Hooks</a></li>
+    <li><a href="#es6">ES6+ Cheatsheet</a></li>
+    <li><a href="#typescript">TypeScript — Generics, Utility Types, Patterns</a></li>
     <li><a href="#ask">Questions to Ask Them</a></li>
   </ol>
 </div>
@@ -888,6 +893,852 @@ I18nManager.allowRTL(true);
         <li><strong>Agent-friendly code style</strong> — small files, explicit types, no barrel file magic. Agents navigate typed, modular code much better.</li>
         <li><strong>Review the AI's work</strong> — teach the team to verify, not just accept. AI tools are fast but they hallucinate. Review diffs like you review a junior dev's PR.</li>
       </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<section id="jscore">
+  <h1>JS Core — var / let / const, Closures, Hoisting, Event Loop</h1>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-easy">Classic</span> var vs let vs const — what are the real differences?</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// VAR — function-scoped, hoisted, can be redeclared
+var x = 1;
+var x = 2;          // ✅ no error
+console.log(y);     // undefined (hoisted, not ReferenceError)
+var y = 5;
+function test() {
+  if (true) { var z = 10; }
+  console.log(z);   // 10 — var leaks out of the block!
+}
+
+// LET — block-scoped, TDZ (Temporal Dead Zone), can't redeclare
+let a = 1;
+let a = 2;          // ❌ SyntaxError
+console.log(b);     // ❌ ReferenceError — TDZ, not undefined
+let b = 5;
+if (true) { let c = 10; }
+console.log(c);     // ❌ ReferenceError — block scoped
+
+// CONST — same as let but can't reassign
+const obj = { name: 'Ahsan' };
+obj.name = 'Munir';  // ✅ allowed — object itself didn't change
+obj = {};            // ❌ TypeError — can't reassign the binding
+</code></pre>
+      <p><strong>Rule of thumb:</strong> always <code>const</code>. Use <code>let</code> only when you need to reassign (loop counter, flag). Never use <code>var</code>.</p>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-hard">Hard</span> Classic var-in-loop trap — why and how to fix</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// PROBLEM — var is function-scoped, loop finishes before timeout fires
+for (var i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 100);
+}
+// Output: 3, 3, 3  ← all see the same i
+
+// FIX 1 — use let (block-scoped, new binding each iteration)
+for (let i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 100);
+}
+// Output: 0, 1, 2 ✅
+
+// FIX 2 — IIFE to capture the value
+for (var i = 0; i < 3; i++) {
+  ((j) => setTimeout(() => console.log(j), 100))(i);
+}
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-hard">Hard</span> What is a closure? Give a real example.</div>
+    <div class="qa-a">
+      <p>A closure is a function that <strong>remembers the variables from its outer scope</strong> even after the outer function has returned.</p>
+<pre><code class="language-typescript">// Classic closure — counter factory
+function makeCounter(start = 0) {
+  let count = start;          // this variable lives in the closure
+  return {
+    increment: () => ++count,
+    decrement: () => --count,
+    value: () => count,
+  };
+}
+const counter = makeCounter(10);
+counter.increment(); // 11
+counter.increment(); // 12
+counter.value();     // 12
+// `count` is private — can't access it directly from outside
+
+// React example — every render captures its own state value
+function Timer() {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      // This closure captures `seconds` at the time effect ran
+      // Use functional update to avoid stale closure:
+      setSeconds((s) => s + 1);  // ✅ always fresh
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);  // empty deps — runs once
+}
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-hard">Hard</span> Event loop — what order does this print?</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">console.log('1');
+
+setTimeout(() => console.log('2'), 0);
+
+Promise.resolve().then(() => console.log('3'));
+
+console.log('4');
+
+// Output: 1, 4, 3, 2
+// Why:
+// 1 & 4 — synchronous, run immediately on call stack
+// 3 — Promise.then is a MICROTASK — runs before next macrotask
+// 2 — setTimeout is a MACROTASK — runs after all microtasks clear
+</code></pre>
+      <p><strong>Order:</strong> Synchronous → Microtasks (Promise.then, queueMicrotask) → Macrotasks (setTimeout, setInterval, setImmediate)</p>
+      <p><strong>Practical impact in React Native:</strong> setState batching, why async/await doesn't block the UI thread, why heavy computation should be moved to a worker.</p>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-med">Med</span> setTimeout / setInterval — common mistakes</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// ❌ MISTAKE 1 — not cleaning up in useEffect → memory leak + state update on unmounted component
+useEffect(() => {
+  const id = setInterval(() => setCount((c) => c + 1), 1000);
+  // forgot return () => clearInterval(id);
+}, []);
+
+// ✅ FIX
+useEffect(() => {
+  const id = setInterval(() => setCount((c) => c + 1), 1000);
+  return () => clearInterval(id);
+}, []);
+
+// ❌ MISTAKE 2 — stale closure in setInterval
+useEffect(() => {
+  const id = setInterval(() => {
+    console.log(count); // always prints initial value — stale!
+  }, 1000);
+  return () => clearInterval(id);
+}, []);  // count not in deps
+
+// ✅ FIX — use ref for latest value
+const countRef = useRef(count);
+useEffect(() => { countRef.current = count; }, [count]);
+useEffect(() => {
+  const id = setInterval(() => {
+    console.log(countRef.current); // always fresh ✅
+  }, 1000);
+  return () => clearInterval(id);
+}, []);
+
+// setTimeout(fn, 0) — does NOT mean "run immediately"
+// It means "run after current call stack + all microtasks clear"
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-med">Med</span> What is this in JavaScript? Arrow vs regular function</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// Regular function — 'this' depends on HOW it's called
+const obj = {
+  name: 'Ahsan',
+  greet: function() { console.log(this.name); },      // 'Ahsan'
+  greetArrow: () => { console.log(this.name); },      // undefined — arrow captures outer this
+};
+
+// In class components (before hooks):
+class MyComponent extends React.Component {
+  handleClick() {
+    console.log(this); // undefined in strict mode if not bound!
+  }
+  handleClickBound = () => {
+    console.log(this); // ✅ arrow — always the class instance
+  }
+}
+
+// Rule: arrow functions inherit 'this' from where they are DEFINED
+// Regular functions get 'this' from where they are CALLED
+</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<section id="async">
+  <h1>Async JS — Promises, fetch vs axios, async/await</h1>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-hard">Hard</span> Promise.all vs Promise.allSettled vs Promise.race vs Promise.any</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">const p1 = fetch('/api/user');
+const p2 = fetch('/api/posts');
+const p3 = Promise.reject(new Error('failed'));
+
+// Promise.all — ALL must resolve. Fails fast on first rejection.
+try {
+  const [user, posts] = await Promise.all([p1, p2]);
+  // use when all results are required and one failure = total failure
+} catch (e) {
+  // fires as soon as any promise rejects
+}
+
+// Promise.allSettled — waits for ALL, never throws
+const results = await Promise.allSettled([p1, p2, p3]);
+results.forEach((r) => {
+  if (r.status === 'fulfilled') console.log(r.value);
+  if (r.status === 'rejected')  console.log(r.reason);
+});
+// use when you want partial results — show what worked, skip what failed
+
+// Promise.race — first to SETTLE (resolve OR reject) wins
+const first = await Promise.race([p1, p2]);
+// use for timeout pattern:
+const withTimeout = (promise: Promise<any>, ms: number) =>
+  Promise.race([promise, new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('timeout')), ms))]);
+
+// Promise.any — first to RESOLVE wins (ignores rejections)
+// Only rejects if ALL promises reject (AggregateError)
+const fastest = await Promise.any([p1, p2, p3]);
+// use for redundant requests — whichever CDN responds first
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-hard">Hard</span> fetch vs axios — why do senior devs sometimes prefer fetch?</div>
+    <div class="qa-a">
+      <p><strong>The key difference most juniors miss:</strong> <code>fetch</code> does NOT throw on HTTP errors (404, 500). It only rejects on network failure. You must check <code>response.ok</code> yourself.</p>
+<pre><code class="language-typescript">// FETCH — native, no dependency, full control
+const fetchWithAuth = async (url: string) => {
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortController.signal,   // cancellation
+  });
+
+  if (!response.ok) {                 // ← seniors always check this
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  return response.json();
+};
+
+// Why senior devs use fetch:
+// 1. No extra dependency — smaller bundle
+// 2. Full control over request/response pipeline
+// 3. Native AbortController for cancellation
+// 4. Works in every modern environment without polyfill
+// 5. Streams support (response.body.getReader())
+
+// AXIOS — convenient, interceptors, auto throws on 4xx/5xx
+import axios from 'axios';
+
+// Axios shines for interceptors — e.g. token refresh
+const api = axios.create({ baseURL: 'https://api.munsit.ai' });
+
+api.interceptors.request.use((config) => {
+  config.headers.Authorization = `Bearer ${getToken()}`;
+  return config;
+});
+
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    if (error.response?.status === 401) {
+      await refreshToken();
+      return api.request(error.config); // retry original request
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Use fetch when: simple requests, bundle size matters, full control needed
+// Use axios when: interceptors (token refresh), complex error handling, team familiarity
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-med">Med</span> async/await error handling patterns</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// Pattern 1 — try/catch (most common, can get nested)
+async function loadUser(id: string) {
+  try {
+    const user = await fetchUser(id);
+    return user;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+// Pattern 2 — Go-style tuple (cleaner for multiple awaits)
+async function safeAwait<T>(promise: Promise<T>): Promise<[T, null] | [null, Error]> {
+  try {
+    const data = await promise;
+    return [data, null];
+  } catch (e) {
+    return [null, e as Error];
+  }
+}
+
+const [user, userErr] = await safeAwait(fetchUser(id));
+const [posts, postsErr] = await safeAwait(fetchPosts(id));
+if (userErr) { /* handle */ }
+
+// Pattern 3 — Promise chain (when not using async/await)
+fetchUser(id)
+  .then((user) => fetchPosts(user.id))
+  .then((posts) => setPosts(posts))
+  .catch((err) => setError(err))
+  .finally(() => setLoading(false));
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-med">Med</span> Recursion — implement flatten and tree traversal</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// Flatten nested array — recursion
+function flatten<T>(arr: (T | T[])[]): T[] {
+  return arr.reduce<T[]>((acc, item) =>
+    Array.isArray(item) ? [...acc, ...flatten(item)] : [...acc, item],
+  []);
+}
+flatten([1, [2, [3, [4]]]]); // [1, 2, 3, 4]
+// Built-in: arr.flat(Infinity)
+
+// Factorial
+function factorial(n: number): number {
+  if (n <= 1) return 1;           // base case — ALWAYS have one
+  return n * factorial(n - 1);   // recursive case
+}
+
+// Tree traversal — common in navigation/menu structures
+interface TreeNode {
+  id: string;
+  label: string;
+  children?: TreeNode[];
+}
+
+function findNode(tree: TreeNode[], id: string): TreeNode | null {
+  for (const node of tree) {
+    if (node.id === id) return node;
+    if (node.children) {
+      const found = findNode(node.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// Fibonacci — shows memoisation optimisation
+const memo = new Map<number, number>();
+function fib(n: number): number {
+  if (n <= 1) return n;
+  if (memo.has(n)) return memo.get(n)!;
+  const result = fib(n - 1) + fib(n - 2);
+  memo.set(n, result);
+  return result;
+}
+</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<section id="react-patterns">
+  <h1>React Patterns — HOC, State/Props, Hooks</h1>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-hard">Hard</span> What is a Higher Order Component (HOC)?</div>
+    <div class="qa-a">
+      <p>A HOC is a <strong>function that takes a component and returns a new component</strong> with added behaviour. It's a pattern for reusing logic across components.</p>
+<pre><code class="language-typescript">// HOC — adds auth guard to any screen
+function withAuth<T extends object>(WrappedComponent: React.ComponentType<T>) {
+  return function AuthGuard(props: T) {
+    const { isLoggedIn } = useAuthStore();
+
+    if (!isLoggedIn) {
+      return &lt;Redirect to="/login" /&gt;;
+    }
+
+    return &lt;WrappedComponent {...props} /&gt;;
+  };
+}
+
+// Usage
+const ProtectedScreen = withAuth(DashboardScreen);
+
+// HOC — adds loading/error state to any data component
+function withData&lt;T&gt;(WrappedComponent: React.ComponentType&lt;{ data: T }&gt;, fetcher: () =&gt; Promise&lt;T&gt;) {
+  return function DataWrapper(props: object) {
+    const [data, setData] = useState&lt;T | null&gt;(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      fetcher().then(setData).finally(() => setLoading(false));
+    }, []);
+
+    if (loading) return &lt;ActivityIndicator /&gt;;
+    if (!data) return null;
+    return &lt;WrappedComponent {...props} data={data} /&gt;;
+  };
+}
+
+// Modern note: most HOC use cases are now solved by custom hooks
+// HOC still useful for: wrapping third-party components, class components, cross-cutting concerns
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-hard">Hard</span> All ways to pass data between components</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// 1. PARENT → CHILD (props) — most common
+function Parent() {
+  const [name, setName] = useState('Ahsan');
+  return &lt;Child name={name} /&gt;;          // state → prop
+}
+function Child({ name }: { name: string }) {
+  return &lt;Text&gt;{name}&lt;/Text&gt;;
+}
+
+// 2. CHILD → PARENT (callback prop — "lifting state up")
+function Parent() {
+  const [value, setValue] = useState('');
+  return &lt;Child onChange={setValue} /&gt;;   // pass setter down
+}
+function Child({ onChange }: { onChange: (v: string) => void }) {
+  return &lt;TextInput onChangeText={onChange} /&gt;;
+}
+
+// 3. SIBLING → SIBLING (lift state to common parent)
+function Parent() {
+  const [shared, setShared] = useState('');
+  return (
+    &lt;&gt;
+      &lt;SiblingA onUpdate={setShared} /&gt;
+      &lt;SiblingB value={shared} /&gt;
+    &lt;/&gt;
+  );
+}
+
+// 4. DEEPLY NESTED — Context API (avoids prop drilling)
+const ThemeContext = React.createContext&lt;Theme&gt;(defaultTheme);
+
+function App() {
+  return (
+    &lt;ThemeContext.Provider value={theme}&gt;
+      &lt;DeepChild /&gt;              {/* any depth */}
+    &lt;/ThemeContext.Provider&gt;
+  );
+}
+function DeepChild() {
+  const theme = useContext(ThemeContext);  // no prop drilling
+}
+
+// 5. GLOBAL STATE — Zustand / Redux (cross-tree, any component)
+const useStore = create((set) =&gt; ({ user: null, setUser: (u) =&gt; set({ user: u }) }));
+
+// ComponentA sets:
+const setUser = useStore((s) =&gt; s.setUser);
+setUser({ name: 'Ahsan' });
+
+// ComponentB reads (unrelated in the tree):
+const user = useStore((s) =&gt; s.user);
+</code></pre>
+      <p><strong>Rule:</strong> use props for local parent→child, lift state for siblings, Context for theme/auth/i18n, Zustand/Redux for complex global state.</p>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-hard">Hard</span> useMemo vs useCallback vs React.memo — when to use each</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// React.memo — memoises a COMPONENT, skips re-render if props unchanged
+const TranscriptionRow = React.memo(({ text }: { text: string }) =&gt; {
+  return &lt;Text&gt;{text}&lt;/Text&gt;;
+});
+// Without memo: parent re-renders → every row re-renders
+// With memo: row only re-renders if `text` prop changes
+
+// useCallback — memoises a FUNCTION reference
+// Without it, a new function is created every render → breaks React.memo
+function Parent() {
+  const [count, setCount] = useState(0);
+
+  // ❌ new function every render — TranscriptionRow.memo broken
+  const handlePress = () => console.log('pressed');
+
+  // ✅ same reference as long as deps don't change
+  const handlePress = useCallback(() => console.log('pressed'), []);
+
+  return &lt;TranscriptionRow text="hello" onPress={handlePress} /&gt;;
+}
+
+// useMemo — memoises a COMPUTED VALUE (expensive calculation)
+function TranscriptionScreen({ segments }: { segments: Segment[] }) {
+  // ❌ recomputes on every render
+  const wordCount = segments.reduce((acc, s) =&gt; acc + s.text.split(' ').length, 0);
+
+  // ✅ only recomputes when segments changes
+  const wordCount = useMemo(
+    () =&gt; segments.reduce((acc, s) =&gt; acc + s.text.split(' ').length, 0),
+    [segments]
+  );
+}
+
+// Rule: don't optimise prematurely. Profile first. React.memo + useCallback
+// only help if the component is expensive to render.
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-med">Med</span> Custom hooks — what, why, example</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// A custom hook extracts stateful logic into a reusable function
+// Rules: must start with 'use', can call other hooks
+
+// useDebounce — used for search inputs
+function useDebounce&lt;T&gt;(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() =&gt; {
+    const timer = setTimeout(() =&gt; setDebounced(value), delay);
+    return () =&gt; clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
+
+// Usage in ExploreScreen:
+const debouncedSearch = useDebounce(searchQuery, 400);
+useEffect(() =&gt; {
+  fetchProducts(0, debouncedSearch);
+}, [debouncedSearch]);   // only fires 400ms after user stops typing
+
+// useRecording — extracted from AudioDemoScreen
+function useRecording() {
+  const [isRecording, setIsRecording] = useState(false);
+  const [uri, setUri] = useState&lt;string | null&gt;(null);
+  const recordingRef = useRef&lt;Audio.Recording | null&gt;(null);
+
+  const start = async () =&gt; { /* ... */ };
+  const stop = async () =&gt; { /* ... */ };
+
+  useEffect(() =&gt; () =&gt; { recordingRef.current?.stopAndUnloadAsync(); }, []);
+
+  return { isRecording, uri, start, stop };
+}
+</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<section id="es6">
+  <h1>ES6+ Cheatsheet — Features You Must Know</h1>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-med">Med</span> Destructuring, spread, rest — all patterns</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// DESTRUCTURING — arrays
+const [first, second, ...rest] = [1, 2, 3, 4, 5];
+// first=1, second=2, rest=[3,4,5]
+
+// DESTRUCTURING — objects
+const { name, age = 25, ...others } = { name: 'Ahsan', city: 'Dubai' };
+// name='Ahsan', age=25 (default), others={city:'Dubai'}
+
+// Rename while destructuring
+const { name: fullName } = { name: 'Ahsan' };
+
+// Nested destructuring
+const { address: { city } } = { address: { city: 'Dubai' } };
+
+// SPREAD — copy / merge
+const arr2 = [...arr1, 4, 5];               // array copy + append
+const obj2 = { ...obj1, role: 'senior' };  // object merge (right wins)
+
+// REST — collect remaining args
+function log(first: string, ...rest: string[]) {
+  console.log(first, rest);  // rest is an array
+}
+
+// Optional chaining — safe deep access
+const city = user?.address?.city ?? 'Unknown';
+//                ↑ if null/undefined, short-circuits to undefined, then ?? gives default
+
+// Nullish coalescing — only falls back on null/undefined (not 0 or '')
+const count = value ?? 0;    // 0 if value is null/undefined
+const count2 = value || 0;   // 0 if value is falsy (0, '', false — ⚠️ often wrong)
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-med">Med</span> Array methods — map, filter, reduce, find, flat</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">const products = [
+  { id: 1, name: 'Phone', price: 999, inStock: true },
+  { id: 2, name: 'Laptop', price: 1999, inStock: false },
+  { id: 3, name: 'Tablet', price: 599, inStock: true },
+];
+
+// map — transform every item, returns new array (same length)
+const names = products.map((p) =&gt; p.name);  // ['Phone', 'Laptop', 'Tablet']
+
+// filter — keep items that pass a test
+const available = products.filter((p) =&gt; p.inStock);  // Phone, Tablet
+
+// reduce — accumulate to a single value
+const total = products.reduce((sum, p) =&gt; sum + p.price, 0);  // 3597
+
+// find — first item that matches (returns item or undefined)
+const cheap = products.find((p) =&gt; p.price &lt; 1000);  // Phone
+
+// some — true if ANY item matches
+const hasExpensive = products.some((p) =&gt; p.price &gt; 1500);  // true
+
+// every — true if ALL items match
+const allInStock = products.every((p) =&gt; p.inStock);  // false
+
+// flat / flatMap
+const nested = [[1, 2], [3, 4]];
+nested.flat();                          // [1, 2, 3, 4]
+products.flatMap((p) =&gt; [p.id, p.name]); // [1, 'Phone', 2, 'Laptop', ...]
+
+// Chain them (readable pipeline)
+const inStockNames = products
+  .filter((p) =&gt; p.inStock)
+  .map((p) =&gt; p.name.toUpperCase());  // ['PHONE', 'TABLET']
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-easy">Classic</span> Modules, template literals, default params, short-hand</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// Template literals
+const msg = `Hello ${name}, you have ${count} messages`;
+// Multi-line:
+const query = `
+  SELECT * FROM users
+  WHERE id = ${id}
+`;
+
+// Default parameters
+function createUser(name: string, role = 'viewer', active = true) {}
+
+// Shorthand property
+const name = 'Ahsan';
+const obj = { name, age: 30 };   // same as { name: name, age: 30 }
+
+// Computed property names
+const key = 'dynamic';
+const obj2 = { [key]: 'value' }; // { dynamic: 'value' }
+
+// Named exports vs default export
+export const helper = () =&gt; {};     // named
+export default function App() {}    // default
+
+import App, { helper } from './App';  // import both
+
+// Dynamic import (code splitting)
+const Screen = React.lazy(() =&gt; import('./HeavyScreen'));
+</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<section id="typescript">
+  <h1>TypeScript — Generics, Utility Types, Patterns</h1>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-hard">Hard</span> interface vs type — when to use each</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// INTERFACE — for object shapes, can be extended/merged
+interface User {
+  id: string;
+  name: string;
+}
+interface AdminUser extends User {   // ✅ extends
+  permissions: string[];
+}
+// Declaration merging (useful for augmenting libraries)
+interface Window { myCustomProp: string; }
+interface Window { anotherProp: number; }  // merges — both exist
+
+// TYPE — for anything: unions, intersections, primitives, tuples
+type ID = string | number;                              // union
+type Status = 'idle' | 'loading' | 'success' | 'error'; // string literal union
+type Point = { x: number } &amp; { y: number };            // intersection
+type Pair = [string, number];                           // tuple
+type Callback = (event: Event) =&gt; void;                // function
+
+// Rule: use interface for object shapes (extendable, better error messages)
+// use type for unions, intersections, aliases, and complex types
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-hard">Hard</span> Generics — explain with real examples</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// Generic function — works with any type
+function first&lt;T&gt;(arr: T[]): T | undefined {
+  return arr[0];
+}
+first([1, 2, 3]);      // returns number
+first(['a', 'b']);     // returns string
+
+// Generic with constraint
+function getProperty&lt;T, K extends keyof T&gt;(obj: T, key: K): T[K] {
+  return obj[key];
+}
+const user = { name: 'Ahsan', age: 30 };
+getProperty(user, 'name');   // ✅ string
+getProperty(user, 'email');  // ❌ compile error — 'email' not in User
+
+// Generic API response wrapper
+interface ApiResponse&lt;T&gt; {
+  data: T;
+  status: number;
+  message: string;
+}
+type UserResponse = ApiResponse&lt;User&gt;;
+type PostsResponse = ApiResponse&lt;Post[]&gt;;
+
+// Generic React component
+function List&lt;T extends { id: string }&gt;({
+  items,
+  renderItem,
+}: {
+  items: T[];
+  renderItem: (item: T) =&gt; React.ReactNode;
+}) {
+  return &lt;&gt;{items.map((item) =&gt; &lt;div key={item.id}&gt;{renderItem(item)}&lt;/div&gt;)}&lt;/&gt;;
+}
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-hard">Hard</span> Utility types — must know all of these</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'viewer';
+}
+
+// Partial — all properties optional
+type UserUpdate = Partial&lt;User&gt;;
+// { id?: string; name?: string; email?: string; role?: ... }
+
+// Required — all properties required (opposite of Partial)
+type StrictUser = Required&lt;Partial&lt;User&gt;&gt;;
+
+// Pick — keep only some properties
+type UserPreview = Pick&lt;User, 'id' | 'name'&gt;;
+// { id: string; name: string }
+
+// Omit — remove some properties
+type PublicUser = Omit&lt;User, 'email' | 'role'&gt;;
+// { id: string; name: string }
+
+// Record — map keys to a type
+type RolePermissions = Record&lt;User['role'], string[]&gt;;
+// { admin: string[]; viewer: string[] }
+
+// Readonly — no mutation allowed
+const user: Readonly&lt;User&gt; = { id: '1', name: 'Ahsan', email: 'a@a.com', role: 'admin' };
+user.name = 'x';  // ❌ compile error
+
+// ReturnType — extract return type of a function
+function getUser() { return { id: '1', name: 'Ahsan' }; }
+type UserShape = ReturnType&lt;typeof getUser&gt;;  // { id: string; name: string }
+
+// Parameters — extract parameter types
+type FetchParams = Parameters&lt;typeof fetch&gt;;  // [input: RequestInfo, init?: RequestInit]
+
+// NonNullable — remove null and undefined
+type SafeId = NonNullable&lt;string | null | undefined&gt;;  // string
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-hard">Hard</span> Discriminated union — what is it and why is it powerful?</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// A union where a common 'kind'/'type'/'status' field lets TS narrow the type
+type LoadingState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: Transcription[] }
+  | { status: 'error'; error: Error };
+
+function render(state: LoadingState) {
+  switch (state.status) {
+    case 'idle':    return &lt;IdleView /&gt;;
+    case 'loading': return &lt;Spinner /&gt;;
+    case 'success': return &lt;List data={state.data} /&gt;;  // TS knows data exists here
+    case 'error':   return &lt;ErrorView error={state.error} /&gt;;  // TS knows error exists
+  }
+}
+// TypeScript enforces exhaustive handling — if you add a new status,
+// TS will error on the switch until you handle it. Zero runtime bugs.
+
+// Real world — navigation params
+type RootStackParamList = {
+  Home: undefined;
+  Transcription: { sessionId: string };
+  AudioPlayer: { uri: string; title: string };
+};
+</code></pre>
+    </div>
+  </div>
+
+  <div class="qa-block">
+    <div class="qa-q"><span class="tag tag-med">Med</span> keyof, typeof, mapped types</div>
+    <div class="qa-a">
+<pre><code class="language-typescript">// keyof — union of keys
+type UserKeys = keyof User;  // 'id' | 'name' | 'email' | 'role'
+
+// typeof — get type from a value
+const config = { apiUrl: 'https://api.munsit.ai', timeout: 5000 };
+type Config = typeof config;  // { apiUrl: string; timeout: number }
+
+// Mapped type — transform every property
+type Optional&lt;T&gt; = {
+  [K in keyof T]?: T[K];  // same as Partial&lt;T&gt;
+};
+
+type Nullable&lt;T&gt; = {
+  [K in keyof T]: T[K] | null;
+};
+
+// Conditional type
+type IsString&lt;T&gt; = T extends string ? 'yes' : 'no';
+type A = IsString&lt;string&gt;;  // 'yes'
+type B = IsString&lt;number&gt;;  // 'no'
+</code></pre>
     </div>
   </div>
 </section>
